@@ -1,0 +1,35 @@
+seed: 7
+deviceOrder: [mps, cuda, cpu]
+
+paths:
+  cifar10Root: data/cifar10            # torchvision download target
+  cifar10cRoot: data/CIFAR-10-C        # extracted from data/raw/CIFAR-10-C.tar
+  checkpointDir: models/checkpoints
+  resultsDir: results
+
+source:
+  model: resnet18
+  epochs: 100
+  batchSize: 128
+  lr: 0.1                # SGD + cosine schedule, standard CIFAR recipe
+  momentum: 0.9
+  weightDecay: 0.0005
+  # Canonical CIFAR-10 statistics, used by run/probeThroughput before a
+  # checkpoint exists. run/trainSource.py fits them on the training split and
+  # stores the fitted values inside the checkpoint; all evaluation runs read
+  # the checkpoint copy, not these.
+  normMean: [0.4914, 0.4822, 0.4465]
+  normStd: [0.2470, 0.2435, 0.2616]
+
+adaptation:
+  bnMode: train          # BN normalises with the current batch statistics
+  lr: 0.001              # shared by TENT and gated-TENT
+  tunedLr: 0.016         # TENT's own step size, selected on the validation cells:
+                         # results/probe.csv and results/stepControl.csv cover
+                         # 0.0005-0.032, seven trials against the six the gate
+                         # tuning used, so the baseline is not under-tuned
+  stepsPerBatch: 1
+  gradientProbeBatches: 10   # batches per cell sampled by run/runGradientScale.py
+  batchSize: 64
+  batchSweep: [16, 64, 256]
+  seeds: [7, 8, 9]       # vary stream order and augmentation draws only

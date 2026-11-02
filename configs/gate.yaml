@@ -1,0 +1,314 @@
+# Gate design. The headline ablation in `ablation` below toggles the two
+# `use` switches; `inLoss` and `inWeights` split the consistency gate into its
+# two roles so the ablation can tell reweighting apart from an extra loss term.
+
+# Quantile entropy gate: keep the lowest-entropy fraction q of each batch.
+# A quantile (not an absolute threshold) is used because predictive entropy
+# shifts wholesale with corruption severity.
+entropyGate:
+  use: false             # results/ablation.csv: filtering the batch by entropy is a
+  keepFraction: 1.0      # negative result at both q = 0.75 (-0.25 pp) and q = 0.50
+                         # (-0.44 pp) against keeping the whole batch, so the switch
+                         # is off in the headline method and the sweep rows below
+                         # stay in the ablation table as the evidence
+  fractionSweep: [0.5, 0.75, 1.0]
+
+# Consistency term: two label-preserving views per image, symmetric KL as the
+# disagreement score. It enters the objective scaled by lambda, and the same
+# normalised score reweights the samples (weight = 1 - d, floored so a sample is
+# down-weighted but never dropped by this gate alone). Reweighting on its own
+# measured -0.01 pp, so the loss term carries the gain; keeping both roles is
+# what the proposal's objective says and it costs no extra pass.
+consistencyGate:
+  use: true
+  views: 2
+  weight: 4.0            # lambda. Tuning picked the top of the original sweep and
+                         # the ladder in results/stepControl.csv peaks here: 79.62%
+                         # at lambda 4, 79.21% at 8, 77.17% at 16, 68.08% at 32
+  weightSweep: [0.25, 0.5, 1.0]
+  weightFloor: 0.2
+  inLoss: true           # lambda * d_i enters the objective
+  inWeights: true        # 1 - normalised d_i reweights the samples
+  # augmentation must not resemble the corruptions under test, so no
+  # colour/blur transforms here
+  augment: [random_resized_crop, horizontal_flip]
+  cropScale: [0.8, 1.0]
+
+loss:
+  # L = sum_i w_i * (H(p_i) + lambda * d_i) / sum_i w_i
+  normaliseByWeights: true
+
+tuning:
+  # Sequential, not a grid: the entropy fraction first with lambda frozen, then
+  # lambda at the best fraction. Each stage names the key to override and the
+  # list to read, so the candidate values live in exactly one place.
+  # results/tuning.csv holds the pass that picked these two values, run while
+  # entropyGate.use was still true; the lambda ladder was extended afterwards by
+  # the stepControl block, which states its own overrides explicitly. Re-running
+  # this block today needs entropyGate.use set back to true for stage one.
+  stages:
+    - override: entropyGate.keepFraction
+      valuesFrom: entropyGate.fractionSweep
+    - override: consistencyGate.weight
+      valuesFrom: consistencyGate.weightSweep
+  budgetPerMethod: 6
+
+ablation:
+  # The controlled comparison the Guidance asks for, plus the two split-role
+  # controls that separate "reweighting the samples" from "adding a consistency
+  # term to the objective". Checkpoint, seed, batch size, learning rate and the
+  # cell list are identical across rows; `tent` is reached by switching both
+  # gates off, the equivalence the Layer 4 self-check verified numerically.
+  # entropyGateOnly is run at both fractions because the tuning sweep only
+  # covered q with the consistency gate on.
+  # Both `use` switches are pinned on every row: with entropyGate.use now
+  # defaulting to false, a row that only sets keepFraction runs as plain TENT
+  # and the negative result it is meant to record disappears without a trace.
+  cells: validation
+  variants:
+    - name: tent
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: entropyGateOnly_q75
+      overrides:
+        consistencyGate.use: false
+        entropyGate.use: true
+        entropyGate.keepFraction: 0.75
+    - name: entropyGateOnly_q50
+      overrides:
+        consistencyGate.use: false
+        entropyGate.use: true
+        entropyGate.keepFraction: 0.5
+    # lambda is written out on every row below rather than left to the file
+    # defaults, so these eight numbers stay reproducible now that the defaults
+    # have moved to the selected configuration.
+    - name: consistencyWeightOnly
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inLoss: false
+        consistencyGate.weight: 1.0
+    - name: consistencyLossOnly
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 1.0
+    - name: bothGates
+      overrides:
+        entropyGate.use: true
+        consistencyGate.weight: 1.0
+    - name: bothGates_lambda2
+      overrides:
+        entropyGate.use: true
+        consistencyGate.weight: 2.0
+    - name: bothGates_lambda4
+      overrides:
+        entropyGate.use: true
+        consistencyGate.weight: 4.0
+
+# Step-size control. ablation shows the consistency gain lives in the loss term,
+# not in the reweighting, and it grows with lambda. A larger lambda is also a
+# larger gradient, so the same cells are run with the gates switched off at
+# multiplied learning rates, and with the loss-only variant at a divided one.
+# If plain TENT climbs as fast, the consistency signal is just a step-size
+# effect; if it saturates while lambda keeps climbing, the signal is real.
+probe:
+  cells: validation
+  reference: tent_lr1
+  variants:
+    - name: tent_lr1
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_lr2
+      lr: 0.002
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_lr4
+      lr: 0.004
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_lr8
+      lr: 0.008
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    # The candidate final method: consistency term in the objective, no
+    # reweighting, entropy gate left off since tuning picked q = 1.0.
+    - name: lossOnly_lambda4
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+    - name: lossOnly_lambda8
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 8.0
+    - name: lossOnly_lambda4_lrHalf
+      lr: 0.0005
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+
+# Both ladders on the same cells, same seed, same code path: TENT multiplied by
+# learning rate, the consistency term multiplied by lambda. probe above already
+# shows plain TENT at 8x the step reaching the accuracy lambda 4 bought, so the
+# question this answers is whether lambda can go where learning rate cannot.
+stepControl:
+  cells: validation
+  reference: tent_lr8
+  variants:
+    # The lr-matched control: probe showed lambda 4 at half the step still
+    # reaching 79.41%, so plain TENT at that same half step is the number it has
+    # to be compared against.
+    - name: tent_lrHalf
+      lr: 0.0005
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_lr8
+      lr: 0.008
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_lr16
+      lr: 0.016
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_lr32
+      lr: 0.032
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: lossOnly_lambda4
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+    - name: lossOnly_lambda8
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 8.0
+    - name: lossOnly_lambda16
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 16.0
+    - name: lossOnly_lambda32
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 32.0
+
+# Where a regulariser is worth its cost is the small-batch regime: the batch
+# statistics and the entropy gradient are both noisier there, and the proposal's
+# batch sweep has to be run anyway. lambda 4 at lr 0.001 is paired against plain
+# TENT at the same batch size.
+smallBatch:
+  cells: validation
+  reference: tent_lr1
+  variants:
+    - name: tent_lr1
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: lossOnly_lambda4_b64
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+    - name: tent_b32
+      batch: 32
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: lossOnly_lambda4_b32
+      batch: 32
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+    - name: tent_b16
+      batch: 16
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: lossOnly_lambda4_b16
+      batch: 16
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+
+# stepControl found TENT's best step size at batch 64 (lr 0.016). Four times as
+# many batches per cell means four times as many updates over the same images, so
+# that optimum cannot carry over to batch 16 unchanged and the comparison there
+# needs its own ladder: six TENT trials here, the same budget the gate tuning got.
+batch16Tuning:
+  cells: validation
+  reference: tent_b16_lr1
+  variants:
+    - name: tent_b16_lr1
+      batch: 16
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: lossOnly_lambda4_b16_lr1
+      batch: 16
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+    # results/smallBatch.csv reverses the gain at batch 16: 73.61% against plain
+    # TENT's 76.46%. A cell then holds four times as many update steps as at
+    # batch 64, so these two rows ask whether the loss of confidence is the
+    # consistency term or simply four times the movement.
+    - name: lossOnly_lambda4_b16_lrQuarter
+      batch: 16
+      lr: 0.00025
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 4.0
+    - name: lossOnly_lambda1_b16_lr1
+      batch: 16
+      overrides:
+        entropyGate.use: false
+        consistencyGate.inWeights: false
+        consistencyGate.weight: 1.0
+    - name: tent_b16_lrHalf
+      batch: 16
+      lr: 0.0005
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_b16_lr2
+      batch: 16
+      lr: 0.002
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_b16_lr4
+      batch: 16
+      lr: 0.004
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_b16_lr8
+      batch: 16
+      lr: 0.008
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false
+    - name: tent_b16_lr16
+      batch: 16
+      lr: 0.016
+      overrides:
+        entropyGate.use: false
+        consistencyGate.use: false

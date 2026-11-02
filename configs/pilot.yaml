@@ -1,0 +1,5 @@
+# The pilot gate, fixed before looking at any result.
+# TENT must clear both numbers on the 10 validation cells, otherwise the study
+# pivots to the empirical batch-size / mixed-stream comparison (plan B).
+minMeanGainPp: 1.0          # TENT mean accuracy minus source-only mean accuracy
+maxPerCorruptionDropPp: 0.5 # no single corruption may lose more than this

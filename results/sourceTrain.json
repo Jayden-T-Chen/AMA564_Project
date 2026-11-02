@@ -1,0 +1,518 @@
+{
+  "checkpoint": "models/checkpoints/resNet18Seed7.pt",
+  "device": "mps",
+  "fittedNormalisation": {
+    "mean": [
+      0.49139967861920936,
+      0.48215840840079704,
+      0.446530914459704
+    ],
+    "std": [
+      0.24703223245050313,
+      0.24348512800288716,
+      0.2615878417317208
+    ]
+  },
+  "curve": [
+    {
+      "epoch": 1,
+      "testAccuracy": 0.341,
+      "seconds": 43.9
+    },
+    {
+      "epoch": 2,
+      "testAccuracy": 0.4642,
+      "seconds": 37.8
+    },
+    {
+      "epoch": 3,
+      "testAccuracy": 0.5568,
+      "seconds": 37.8
+    },
+    {
+      "epoch": 4,
+      "testAccuracy": 0.5555,
+      "seconds": 39.3
+    },
+    {
+      "epoch": 5,
+      "testAccuracy": 0.6355,
+      "seconds": 39.9
+    },
+    {
+      "epoch": 6,
+      "testAccuracy": 0.6543,
+      "seconds": 39.5
+    },
+    {
+      "epoch": 7,
+      "testAccuracy": 0.6745,
+      "seconds": 38.9
+    },
+    {
+      "epoch": 8,
+      "testAccuracy": 0.6772,
+      "seconds": 39.6
+    },
+    {
+      "epoch": 9,
+      "testAccuracy": 0.6999,
+      "seconds": 43.7
+    },
+    {
+      "epoch": 10,
+      "testAccuracy": 0.6986,
+      "seconds": 46.5
+    },
+    {
+      "epoch": 11,
+      "testAccuracy": 0.7265,
+      "seconds": 36.1
+    },
+    {
+      "epoch": 12,
+      "testAccuracy": 0.7058,
+      "seconds": 35.5
+    },
+    {
+      "epoch": 13,
+      "testAccuracy": 0.7328,
+      "seconds": 35.1
+    },
+    {
+      "epoch": 14,
+      "testAccuracy": 0.7034,
+      "seconds": 35.4
+    },
+    {
+      "epoch": 15,
+      "testAccuracy": 0.6923,
+      "seconds": 36.9
+    },
+    {
+      "epoch": 16,
+      "testAccuracy": 0.7288,
+      "seconds": 35.7
+    },
+    {
+      "epoch": 17,
+      "testAccuracy": 0.7457,
+      "seconds": 36.3
+    },
+    {
+      "epoch": 18,
+      "testAccuracy": 0.7554,
+      "seconds": 37.8
+    },
+    {
+      "epoch": 19,
+      "testAccuracy": 0.7303,
+      "seconds": 38.1
+    },
+    {
+      "epoch": 20,
+      "testAccuracy": 0.739,
+      "seconds": 39.2
+    },
+    {
+      "epoch": 21,
+      "testAccuracy": 0.7223,
+      "seconds": 40.0
+    },
+    {
+      "epoch": 22,
+      "testAccuracy": 0.7339,
+      "seconds": 41.2
+    },
+    {
+      "epoch": 23,
+      "testAccuracy": 0.7527,
+      "seconds": 41.3
+    },
+    {
+      "epoch": 24,
+      "testAccuracy": 0.742,
+      "seconds": 41.4
+    },
+    {
+      "epoch": 25,
+      "testAccuracy": 0.755,
+      "seconds": 41.5
+    },
+    {
+      "epoch": 26,
+      "testAccuracy": 0.7679,
+      "seconds": 41.4
+    },
+    {
+      "epoch": 27,
+      "testAccuracy": 0.7728,
+      "seconds": 41.5
+    },
+    {
+      "epoch": 28,
+      "testAccuracy": 0.7464,
+      "seconds": 41.8
+    },
+    {
+      "epoch": 29,
+      "testAccuracy": 0.7705,
+      "seconds": 41.6
+    },
+    {
+      "epoch": 30,
+      "testAccuracy": 0.7687,
+      "seconds": 41.9
+    },
+    {
+      "epoch": 31,
+      "testAccuracy": 0.7681,
+      "seconds": 42.0
+    },
+    {
+      "epoch": 32,
+      "testAccuracy": 0.7623,
+      "seconds": 42.2
+    },
+    {
+      "epoch": 33,
+      "testAccuracy": 0.7688,
+      "seconds": 42.8
+    },
+    {
+      "epoch": 34,
+      "testAccuracy": 0.7361,
+      "seconds": 42.8
+    },
+    {
+      "epoch": 35,
+      "testAccuracy": 0.7662,
+      "seconds": 43.6
+    },
+    {
+      "epoch": 36,
+      "testAccuracy": 0.7785,
+      "seconds": 43.0
+    },
+    {
+      "epoch": 37,
+      "testAccuracy": 0.7665,
+      "seconds": 43.2
+    },
+    {
+      "epoch": 38,
+      "testAccuracy": 0.7963,
+      "seconds": 42.6
+    },
+    {
+      "epoch": 39,
+      "testAccuracy": 0.757,
+      "seconds": 42.6
+    },
+    {
+      "epoch": 40,
+      "testAccuracy": 0.767,
+      "seconds": 42.8
+    },
+    {
+      "epoch": 41,
+      "testAccuracy": 0.7722,
+      "seconds": 43.1
+    },
+    {
+      "epoch": 42,
+      "testAccuracy": 0.7878,
+      "seconds": 43.1
+    },
+    {
+      "epoch": 43,
+      "testAccuracy": 0.7721,
+      "seconds": 43.2
+    },
+    {
+      "epoch": 44,
+      "testAccuracy": 0.7822,
+      "seconds": 42.7
+    },
+    {
+      "epoch": 45,
+      "testAccuracy": 0.7896,
+      "seconds": 42.5
+    },
+    {
+      "epoch": 46,
+      "testAccuracy": 0.7967,
+      "seconds": 41.9
+    },
+    {
+      "epoch": 47,
+      "testAccuracy": 0.7935,
+      "seconds": 41.8
+    },
+    {
+      "epoch": 48,
+      "testAccuracy": 0.7961,
+      "seconds": 41.9
+    },
+    {
+      "epoch": 49,
+      "testAccuracy": 0.8035,
+      "seconds": 42.2
+    },
+    {
+      "epoch": 50,
+      "testAccuracy": 0.8028,
+      "seconds": 41.9
+    },
+    {
+      "epoch": 51,
+      "testAccuracy": 0.7938,
+      "seconds": 42.2
+    },
+    {
+      "epoch": 52,
+      "testAccuracy": 0.7986,
+      "seconds": 42.0
+    },
+    {
+      "epoch": 53,
+      "testAccuracy": 0.7998,
+      "seconds": 42.2
+    },
+    {
+      "epoch": 54,
+      "testAccuracy": 0.8029,
+      "seconds": 42.4
+    },
+    {
+      "epoch": 55,
+      "testAccuracy": 0.7886,
+      "seconds": 42.5
+    },
+    {
+      "epoch": 56,
+      "testAccuracy": 0.8055,
+      "seconds": 42.3
+    },
+    {
+      "epoch": 57,
+      "testAccuracy": 0.798,
+      "seconds": 41.8
+    },
+    {
+      "epoch": 58,
+      "testAccuracy": 0.8076,
+      "seconds": 41.7
+    },
+    {
+      "epoch": 59,
+      "testAccuracy": 0.8092,
+      "seconds": 41.2
+    },
+    {
+      "epoch": 60,
+      "testAccuracy": 0.8171,
+      "seconds": 41.4
+    },
+    {
+      "epoch": 61,
+      "testAccuracy": 0.828,
+      "seconds": 41.7
+    },
+    {
+      "epoch": 62,
+      "testAccuracy": 0.8102,
+      "seconds": 41.4
+    },
+    {
+      "epoch": 63,
+      "testAccuracy": 0.8258,
+      "seconds": 41.3
+    },
+    {
+      "epoch": 64,
+      "testAccuracy": 0.8213,
+      "seconds": 41.2
+    },
+    {
+      "epoch": 65,
+      "testAccuracy": 0.8281,
+      "seconds": 41.8
+    },
+    {
+      "epoch": 66,
+      "testAccuracy": 0.8137,
+      "seconds": 41.5
+    },
+    {
+      "epoch": 67,
+      "testAccuracy": 0.835,
+      "seconds": 41.5
+    },
+    {
+      "epoch": 68,
+      "testAccuracy": 0.8394,
+      "seconds": 41.6
+    },
+    {
+      "epoch": 69,
+      "testAccuracy": 0.846,
+      "seconds": 41.5
+    },
+    {
+      "epoch": 70,
+      "testAccuracy": 0.8404,
+      "seconds": 41.4
+    },
+    {
+      "epoch": 71,
+      "testAccuracy": 0.8456,
+      "seconds": 41.9
+    },
+    {
+      "epoch": 72,
+      "testAccuracy": 0.8454,
+      "seconds": 41.6
+    },
+    {
+      "epoch": 73,
+      "testAccuracy": 0.8443,
+      "seconds": 41.8
+    },
+    {
+      "epoch": 74,
+      "testAccuracy": 0.8426,
+      "seconds": 43.3
+    },
+    {
+      "epoch": 75,
+      "testAccuracy": 0.8355,
+      "seconds": 33.2
+    },
+    {
+      "epoch": 76,
+      "testAccuracy": 0.8465,
+      "seconds": 38.9
+    },
+    {
+      "epoch": 77,
+      "testAccuracy": 0.8565,
+      "seconds": 32.3
+    },
+    {
+      "epoch": 78,
+      "testAccuracy": 0.8485,
+      "seconds": 35.3
+    },
+    {
+      "epoch": 79,
+      "testAccuracy": 0.859,
+      "seconds": 34.5
+    },
+    {
+      "epoch": 80,
+      "testAccuracy": 0.8584,
+      "seconds": 36.1
+    },
+    {
+      "epoch": 81,
+      "testAccuracy": 0.8565,
+      "seconds": 34.8
+    },
+    {
+      "epoch": 82,
+      "testAccuracy": 0.8643,
+      "seconds": 35.8
+    },
+    {
+      "epoch": 83,
+      "testAccuracy": 0.8622,
+      "seconds": 34.8
+    },
+    {
+      "epoch": 84,
+      "testAccuracy": 0.8639,
+      "seconds": 34.5
+    },
+    {
+      "epoch": 85,
+      "testAccuracy": 0.8645,
+      "seconds": 35.3
+    },
+    {
+      "epoch": 86,
+      "testAccuracy": 0.8689,
+      "seconds": 34.7
+    },
+    {
+      "epoch": 87,
+      "testAccuracy": 0.8731,
+      "seconds": 35.4
+    },
+    {
+      "epoch": 88,
+      "testAccuracy": 0.8734,
+      "seconds": 32.9
+    },
+    {
+      "epoch": 89,
+      "testAccuracy": 0.8749,
+      "seconds": 30.8
+    },
+    {
+      "epoch": 90,
+      "testAccuracy": 0.8716,
+      "seconds": 30.7
+    },
+    {
+      "epoch": 91,
+      "testAccuracy": 0.8728,
+      "seconds": 31.1
+    },
+    {
+      "epoch": 92,
+      "testAccuracy": 0.8741,
+      "seconds": 31.2
+    },
+    {
+      "epoch": 93,
+      "testAccuracy": 0.8746,
+      "seconds": 33.0
+    },
+    {
+      "epoch": 94,
+      "testAccuracy": 0.8775,
+      "seconds": 34.8
+    },
+    {
+      "epoch": 95,
+      "testAccuracy": 0.878,
+      "seconds": 35.2
+    },
+    {
+      "epoch": 96,
+      "testAccuracy": 0.8806,
+      "seconds": 35.3
+    },
+    {
+      "epoch": 97,
+      "testAccuracy": 0.8797,
+      "seconds": 35.2
+    },
+    {
+      "epoch": 98,
+      "testAccuracy": 0.8795,
+      "seconds": 37.7
+    },
+    {
+      "epoch": 99,
+      "testAccuracy": 0.8801,
+      "seconds": 40.3
+    },
+    {
+      "epoch": 100,
+      "testAccuracy": 0.8807,
+      "seconds": 35.6
+    }
+  ]
+}

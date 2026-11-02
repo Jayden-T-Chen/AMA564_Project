@@ -1,0 +1,20 @@
+[project]
+name = "ama564-tta-study"
+version = "0.1.0"
+description = "Gated TENT under mixed online distribution shift (AMA 564 course project)"
+requires-python = ">=3.11"
+dependencies = [
+    # torch 2.15.0 is unusable on this machine: its MPS `linear` kernel calls
+    # MPSNDArray -arrayViewWithShape:strides:, which macOS 14.8.9 does not
+    # provide, so any ResNet fc layer aborts the process. 2.10.0 + 0.25.0 run
+    # correctly on MPS and keep the same torchvision ResNet-18 definition.
+    "torch==2.10.0",
+    "torchvision==0.25.0",
+    "numpy",
+    "pyyaml",
+    "matplotlib",
+    "tqdm",
+    # macOS framework Python ships without a usable trust store, so the
+    # torchvision CIFAR-10 download fails on SSL verification without this.
+    "certifi",
+]

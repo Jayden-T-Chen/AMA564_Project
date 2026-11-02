@@ -1,0 +1,36 @@
+corruptions:
+  # Official CIFAR-10-C set (15 types). The archive also ships 4 extra types
+  # (speckle_noise, gaussian_blur, spatter, saturate) from the C+P extension;
+  # they are out of scope here, see data/DATA.md.
+  noise: [gaussian_noise, shot_noise, impulse_noise]
+  blur: [defocus_blur, glass_blur, motion_blur, zoom_blur]
+  weather: [snow, frost, fog, brightness]
+  digital: [contrast, elastic_transform, pixelate, jpeg_compression]
+severities: [1, 2, 3, 4, 5]
+imagesPerSeverityBlock: 10000
+
+# Tuning cells. Never evaluated. Labels are used only to pick these cells.
+validation:
+  corruptions: [gaussian_noise, frost, motion_blur, contrast, jpeg_compression]
+  severities: [3, 5]
+  imagesPerCell: 5000
+
+# Evaluation cells: 5 seen corruptions x unseen severities (15 cells)
+# plus 10 unseen corruptions x all severities (50 cells) = 65 cells.
+test:
+  seenCorruption:
+    corruptions: [gaussian_noise, frost, motion_blur, contrast, jpeg_compression]
+    severities: [1, 2, 4]
+  unseenCorruption:
+    corruptions: [shot_noise, impulse_noise, snow, fog, brightness,
+                  defocus_blur, glass_blur, zoom_blur, elastic_transform, pixelate]
+    severities: [1, 2, 3, 4, 5]
+  imagesPerCell: 10000
+
+# Primary setting: continuous stream, several corruptions interleaved.
+# Built only from unseen corruptions so tuning cells cannot leak in.
+onlineStream:
+  corruptions: [shot_noise, snow, fog, zoom_blur, pixelate]
+  severity: 5
+  imagesPerCorruption: 5000
+  batchSize: 64

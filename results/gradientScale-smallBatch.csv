@@ -1,0 +1,7 @@
+block,variant,lr,batchSize,lambdaWeight,batchesPerCell,entropyGradNorm,consistencyGradNorm,objectiveGradNorm,meanStepNorm,cellPathLength
+smallBatch,tent_lr1,0.001,64,0.0,79,1.348046,0.0,1.348046,0.00134805,0.106496
+smallBatch,lossOnly_lambda4_b64,0.001,64,4.0,79,1.348046,15.170537,15.223505,0.01522351,1.202657
+smallBatch,tent_b32,0.001,32,0.0,157,1.893553,0.0,1.893553,0.00189355,0.297288
+smallBatch,lossOnly_lambda4_b32,0.001,32,4.0,157,1.893553,23.427886,23.409546,0.02340955,3.675299
+smallBatch,tent_b16,0.001,16,0.0,313,2.811103,0.0,2.811103,0.0028111,0.879875
+smallBatch,lossOnly_lambda4_b16,0.001,16,4.0,313,2.811103,32.484453,32.465508,0.03246551,10.161704
