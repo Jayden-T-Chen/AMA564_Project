@@ -1,7 +1,7 @@
 [project]
 name = "ama564-tta-study"
 version = "0.1.0"
-description = "Gated TENT under mixed online distribution shift (AMA 564 course project)"
+description = "What a consistency gate buys: an empirical study of TENT under mixed online distribution shift (AMA 564 course project)"
 requires-python = ">=3.11"
 dependencies = [
     # torch 2.15.0 is unusable on this machine: its MPS `linear` kernel calls

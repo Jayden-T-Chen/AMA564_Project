@@ -87,10 +87,20 @@ tar -xf data/raw/CIFAR-10-C.tar -C data/
 CIFAR-10 downloads itself on first use of `dataset/cifar10Source.py`.
 Provenance, array shapes and the severity-block check are recorded in `data/DATA.md`.
 
+`data/` and `models/checkpoints/` are gitignored, so a fresh clone carries the code, the
+configs and the result tables, and nothing else. Two things have to be produced locally
+before a run can start: the extracted CIFAR-10-C above, and the checkpoint from
+`run.trainSource`, which took 65.7 min on an M1 Air with 8 GB. An entry point that needs a
+checkpoint that is not there stops with a `FileNotFoundError` naming
+`models/checkpoints/resNet18Seed7.pt`. `run.probeThroughput` needs the archive and no
+checkpoint, and `run.makeFigures` needs neither: it redraws all five report figures from
+the committed CSVs, which is how a reader can check the analysis without re-running an
+experiment.
+
 ## Reproducing
 
 ```bash
-.venv/bin/python -m run.probeThroughput   # machine capability, no checkpoint needed
+.venv/bin/python -m run.probeThroughput   # machine capability: needs CIFAR-10-C, no checkpoint
 .venv/bin/python -m run.trainSource       # one frozen ResNet-18 checkpoint
 .venv/bin/python -m run.runPilot          # baselines on the validation cells, gate verdict
 .venv/bin/python -m run.runTuning         # keepFraction then lambda, on the validation cells
@@ -118,6 +128,16 @@ always pass the block name, since the default is the full `ablation` block.
 `run/runGradientScale.py` measures the gradient norm of the same variants the accuracy
 blocks ran, and `run/makeFigures.py` joins the two into `cellPathLength`, the axis both
 ladders share.
+
+**Checked from a clean clone.** The 51 tracked files were cloned to an empty directory, a
+venv was built from `requirements.lock.txt`, and three entry points were re-run there.
+`run.probeThroughput` returned 4,499 / 2,144 / 1,003 images per second against the 4,932 /
+2,176 / 1,155 in the table below, with the same 67 MB peak. `run.runPilot` rewrote
+`results/pilot.csv` with all 30 cells bit-identical to the committed file, gate verdict
+included. `run.makeFigures` reproduced the matched-displacement table and wrote all five
+figures byte-for-byte identical to the committed PNGs. The two things that do not come from
+the repository, the extracted archive and the checkpoint, are what the paragraph above
+describes.
 
 ## Source model
 
