@@ -202,10 +202,10 @@ def severityFigure():
 
 
 def corruptionFigure():
-    """One bar group per corruption, all methods, from the main table."""
+    """One group of markers per corruption, all methods, from the main table."""
     rows = readRows("mainTable.csv")
     if not rows:
-        print("skipped per-corruption bars: results/mainTable.csv not written yet")
+        print("skipped per-corruption figure: results/mainTable.csv not written yet")
         return
     cells = defaultdict(lambda: defaultdict(list))
     for row in rows:
@@ -216,14 +216,18 @@ def corruptionFigure():
     width = 0.9 / len(methods)
     for index, method in enumerate(methods):
         positions = [position + index * width for position in range(len(corruptions))]
-        axis.bar(positions, [sum(cells[c][method]) / len(cells[c][method]) for c in corruptions],
-                 width, label=method)
+        axis.plot(positions, [sum(cells[c][method]) / len(cells[c][method]) for c in corruptions],
+                  marker="o", linestyle="None", label=method)
     axis.set_xticks([position + 0.45 - width / 2 for position in range(len(corruptions))])
     axis.set_xticklabels(corruptions, rotation=60, ha="right", fontsize=7)
     axis.set_ylabel("accuracy (%)")
+    # Markers rather than bars, because the methods span 59 to 87% and an axis from zero
+    # would flatten the differences this figure exists to show. A truncated bar would
+    # overstate them; a point at a height needs no such convention.
+    axis.set_ylim(55, 92)
     axis.set_title("accuracy per corruption type, test cells and seeds averaged")
     axis.grid(axis="y", alpha=0.3)
-    axis.legend(fontsize=8, ncols=2)
+    axis.legend(fontsize=7, ncols=6, loc="upper center", framealpha=0.95)
     writeFigure(figure, "perCorruption", coverage(rows))
 
 
@@ -244,13 +248,14 @@ def batchSweepFigure():
         axis.plot([int(b) for b in batches],
                   [sum(cells[b][method]) / len(cells[b][method]) for b in batches],
                   marker="o", label=method)
-    axis.set_xscale("log2")
+    axis.set_xscale("log", base=2)
     axis.set_xticks([int(b) for b in batches])
+    axis.set_xticklabels(batches)
     axis.set_xlabel("batch size (online stream, severity 5)")
-    axis.set_ylabel("accuracy over the whole stream")
+    axis.set_ylabel("accuracy over the whole stream (%)")
     axis.set_title("batch-size sweep")
     axis.grid(alpha=0.3)
-    axis.legend(fontsize=8)
+    axis.legend(fontsize=8, loc="upper left")
     writeFigure(figure, "batchSweep", coverage(rows))
 
 

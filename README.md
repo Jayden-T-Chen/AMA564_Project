@@ -1,11 +1,58 @@
-# AMA 564 Course Project — Gated TENT under mixed online distribution shift
+# AMA 564 Course Project — what a consistency gate buys: an empirical study of TENT under mixed online distribution shift
 
 Team Tim: Chen Xiyan (26080997g), OuYang Jiaying (26076982g), Zhang Zhenshuo (26127097g),
 Liu Fangze (26119048g).
 
-**Question.** Does adding a sample-selection gate (entropy threshold plus
-augmentation-consistency reweighting) to TENT improve mean and worst-case corruption
-accuracy under a mixed, online distribution shift, and at what cost?
+**Question.** Under a mixed, online distribution shift, what does adding a
+sample-selection objective (an entropy threshold plus augmentation-consistency
+reweighting) to TENT buy, and where does test-time adaptation stop beating the frozen
+source model? Both halves are answered as measurements: the gated variant's accuracy gain
+is scored against TENT's own learning-rate ladder at matched parameter displacement, and
+the comparison is read across batch sizes, corruption types, severities, and an online
+stream that never resets. The section below states the answer, and every number in
+it is in one of the CSVs under `results/`.
+
+## What the runs found
+
+Six methods on the 65 test cells at three seeds (`results/mainTable.csv`), the same six on
+the online stream at batch 16 / 64 / 256 (`results/stream.csv`), and both ladders on one
+displacement axis (`results/stepControl.csv`, `results/smallBatch.csv`,
+`results/batch16Tuning.csv`, `results/gradientScale-*.csv`).
+
+- **TENT at the shared step size is the strongest method that reads no labels**: 81.90%
+  mean accuracy on the 65 test cells, against 80.16% for the gated variant, 79.97% for
+  BN-adapt, 78.82% for TENT at the learning rate the validation cells selected, and 76.45%
+  for the frozen source model. Share of the source model's remaining error removed:
+  23.2 / 15.8 / 15.0 / 10.1%. The label-reading oracle reaches 82.72% (26.6%), so
+  per-sample selection has under 1 pp of headroom over plain TENT.
+- **What the consistency term buys is displacement.** On the shared `cellPathLength` axis
+  its points land on TENT's own learning-rate ladder. Scored at matched displacement and
+  matched batch size the gaps are -0.22 and -0.61 pp at batch 64, -0.34 and -1.63 pp at
+  batch 16, and +0.15 pp for the one single-seed point there
+  (`run/makeFigures.py` prints the table, `results/figures/stepSize.png` draws it).
+- **Batch size costs accuracy at matched displacement as well.** The batch-16 ladder sits
+  3.1 to 3.3 pp below the batch-64 TENT curve at the same displacement, and batch 32 sits
+  1.3 pp below it, so the small-batch loss is a second, separate effect.
+- **A step size chosen on seen corruptions transfers badly.** The 10 validation cells are
+  seen corruptions at severity 3 and 5. On the 15 cells built from the five seen corruption
+  types the gated variant is the strongest of the six methods, 83.58%, above TENT's 82.54%,
+  the tuned learning rate's 83.13% and the oracle's 83.00%. On the 50 unseen cells it drops
+  to 79.14%, behind TENT's 81.71% and BN-adapt's 79.47%, and the gap widens with severity:
+  71.18% against 77.93% at severity 5, where the tuned learning rate falls to 69.04% ±2.0
+  while the oracle climbs to 79.13%.
+- **On the online stream the ranking moves the other way.** The gated variant is above
+  TENT at all three batch sizes (+0.40 / +1.79 / +0.71 pp at 16 / 64 / 256).
+- **Small batches are where adaptation stops paying.** At batch 16 TENT scores 66.46% on
+  the stream against the frozen model's 67.56%, and the tuned learning rate scores 63.99%.
+  Worst-segment accuracy is where adapting pays off: the source model's 54.3% rises to
+  61.9-63.9% at batch 64 and 256, while at batch 16 the lift is smaller (58.5-60.4% for
+  BN-adapt, TENT and the gated variant) and the tuned setting lifts nothing at all, 54.4%.
+- `oracle`, which reads the labels of the samples it is about to update on, is the
+  reference point for per-sample selection. It reaches 82.72% on the grid and
+  68.20 / 68.51 / 68.29% on the stream at batch 16 / 64 / 256, so masking by correctness
+  buys 0.82 pp over plain TENT on the grid and 1.74 / 0.70 / 0.19 pp on the stream, while
+  the gated variant is already above it at batch 64 and 256 (69.60% and 68.81%). The
+  headroom the two gates were aimed at is smaller than the one the step size leaves open.
 
 ## Layout
 
@@ -124,8 +171,13 @@ normalisation statistics fit on the training split, which is what all later runs
 
 Those end-to-end rates put the 65-cell test grid (10,080 images per cell) at 2.8 / 2.8 /
 7.8 / 7.8 / 13.0 min for the five methods, so one seed of the whole main table is about
-34 min and all three seeds about 103 min. The grid and the ablation therefore run on this
-machine, and Google Colab T4 is a fallback rather than a requirement. The efficiency
+34 min and all three seeds about 103 min. The measured passes came in close to that
+estimate: `seconds` in `results/mainTable.csv` records one value per method x seed pass
+over the whole grid, and the two uncontended seeds took 2.5 / 2.9 / 9.2 / 9.4 / 13.3 min,
+so 37 min per seed and 112 min for the table. The seed-7 rows are 1.6-2.5x slower because
+that pass overlapped with the ablation restore and the figure job; taking every seed
+gives 41 min per seed and 124 min in total. The grid and the ablation therefore run on
+this machine, and Google Colab T4 is a fallback rather than a requirement. The efficiency
 answer to Q3 is in the two rows above: 1.9x TENT's per-batch latency for the augmented
 view, and the same 67 MB peak.
 
