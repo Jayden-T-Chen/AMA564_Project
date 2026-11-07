@@ -35,7 +35,10 @@ def batchOrder(count, batchSize, seed):
     generator = np.random.default_rng(seed)
     permutation = generator.permutation(count)
     remainder = -len(permutation) % batchSize
-    permutation = np.concatenate([permutation, permutation[:remainder]])
+    if remainder:
+        # np.resize repeats the head cyclically, so a count smaller than one batch
+        # still fills it; a plain slice would stop at the end of the permutation.
+        permutation = np.concatenate([permutation, np.resize(permutation, remainder)])
     return permutation
 
 

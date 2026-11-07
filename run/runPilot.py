@@ -1,6 +1,6 @@
 """Pilot gate: does the frozen TENT beat source-only on the validation cells?
 
-Run:  .venv/bin/python -m run.runPilot
+Invoked as `run.runAll pilot`.
 
 Writes results/pilot.csv, one row per method x cell, and prints the verdict
 against configs/pilot.yaml. The validation cells are tuning data only; the
@@ -13,14 +13,14 @@ from pathlib import Path
 from configIO import loadConfig
 from dataset.preprocess import normalisationTensors
 from evaluation.metrics import relativeErrorReduction
-from evaluation.protocols import cellList, evaluateCell
+from evaluation.protocols import cellList, displacement, evaluateCell, snapshot
 from methods.baselines import makeBnAdapt, makeSourceOnly
 from methods.tent import makeTentPredict
 from models.resNet18 import loadSourceModel
 from run.runUtils import appendRows, resolveDevice, setSeed
 
-FIELD_NAMES = ["method", "seed", "corruption", "severity",
-               "images", "accuracy", "meanEntropy", "seconds"]
+FIELD_NAMES = ["method", "seed", "corruption", "severity", "images", "accuracy",
+               "meanEntropy", "displacementNorm", "seconds"]
 
 
 def methodFactories(learningRate):
@@ -73,15 +73,16 @@ def printVerdict(accuracies, corruptions, cells, gate):
           else "FAIL -> switch to plan B (batch-size / mixed-stream empirical study)")
 
 
-def main():
+def main(args=()):
     base, splits, gate = loadConfig("base"), loadConfig("splits"), loadConfig("pilot")
     adaptation, validation = base["adaptation"], splits["validation"]
     device = resolveDevice(base["deviceOrder"])
     seed = base["seed"]
     checkpointPath = Path(base["paths"]["checkpointDir"]) / f"resNet18Seed{seed}.pt"
 
-    # Read once just to take the fitted normalisation statistics with it.
-    _, checkpoint = loadSourceModel(checkpointPath, device)
+    # Read once, and kept: the per-cell reset writes these tensors back into this
+    # model rather than building another ResNet for every cell.
+    model, checkpoint = loadSourceModel(checkpointPath, device)
     meanStd = normalisationTensors(checkpoint["normMean"], checkpoint["normStd"], device)
     print(f"checkpoint {checkpointPath.name}: clean test accuracy "
           f"{checkpoint['testAccuracy'] * 100:.2f}% over {checkpoint['epochsRun']} epochs, "
@@ -90,13 +91,20 @@ def main():
     cells = cellList(validation)
     csvPath = Path(base["paths"]["resultsDir"]) / "pilot.csv"
     csvPath.unlink(missing_ok=True)
+    resetPerCell = adaptation["resetPerCell"]
+    print(f"cells are {'episodic' if resetPerCell else 'chained'} "
+          f"(adaptation.resetPerCell), so this verdict is read under the same "
+          f"protocol as the test grid")
     accuracies = {}
     for name, makePredict in methodFactories(adaptation["lr"]).items():
         setSeed(seed)
-        model, _ = loadSourceModel(checkpointPath, device)
-        predict = makePredict(model)
+        predict = None
         accuracies[name] = {}
-        for corruption, severity in cells:
+        for index, (corruption, severity) in enumerate(cells):
+            if resetPerCell or index == 0:
+                model.load_state_dict(checkpoint["stateDict"])
+                predict = makePredict(model)
+            before = snapshot(model)
             start = time.perf_counter()
             result = evaluateCell(base["paths"]["cifar10cRoot"], (corruption, severity),
                                   validation["imagesPerCell"], meanStd, device,
@@ -106,6 +114,7 @@ def main():
                 "method": name, "seed": seed, "corruption": corruption, "severity": severity,
                 "images": result["images"], "accuracy": round(result["accuracy"], 6),
                 "meanEntropy": round(result["meanEntropy"], 5),
+                "displacementNorm": round(displacement(before, model), 6),
                 "seconds": round(time.perf_counter() - start, 1),
             }], FIELD_NAMES)
             print(f"{name:12s} {corruption:18s} sev{severity}  "
@@ -114,7 +123,3 @@ def main():
 
     printVerdict(accuracies, validation["corruptions"], cells, gate)
     print(f"\nrows written to {csvPath}")
-
-
-if __name__ == "__main__":
-    main()

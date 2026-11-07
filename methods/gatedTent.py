@@ -65,7 +65,7 @@ def sampleWeights(entropies, disagreement, gate):
 def gatedObjective(model, batch, gate):
     """The loss one update uses, with the per-sample entropies and disagreement.
 
-    Split out of the step so `run.runGradientScale` can take gradients of the very
+    Split out of the step so `run.runAll gradient` can take gradients of the very
     expression the optimiser sees instead of keeping a second copy of it.
     """
     logits = model(batch)

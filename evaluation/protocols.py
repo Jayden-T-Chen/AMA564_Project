@@ -100,10 +100,58 @@ def evaluateCell(root, cell, count, meanStd, device, batchSize, seed, predict):
                                 batchSize, seed), predict)
 
 
-def evaluateCells(root, cells, count, meanStd, device, batchSize, seed, predict):
-    """{cell -> result} for one method; the tuning runs only need the mean accuracy."""
-    return {cell: evaluateCell(root, cell, count, meanStd, device, batchSize, seed, predict)
-            for cell in cells}
+def trainableParameters(model):
+    """The parameters a method is allowed to move, in a stable order.
+
+    Empty for the two reference points, which freeze everything: their
+    displacement is then exactly zero rather than an accident of the snapshot.
+    """
+    return [parameter for parameter in model.parameters() if parameter.requires_grad]
+
+
+def snapshot(model):
+    """A copy of the trainable parameters, taken after the method has frozen them."""
+    return [parameter.detach().clone() for parameter in trainableParameters(model)]
+
+
+def displacement(before, model):
+    """||theta_after - theta_before|| over the trainable parameters.
+
+    This is the distance one cell actually moves the model, measured on the
+    trajectory the run took. It replaces the estimate lr * ||grad L|| * batches,
+    which reads the gradient at the source parameters and so misses how the
+    gradient itself shrinks as entropy falls.
+    """
+    if not before:
+        return 0.0
+    after = trainableParameters(model)
+    return float(torch.sqrt(sum((parameter.detach() - previous).pow(2).sum()
+                                for parameter, previous in zip(after, before))))
+
+
+def evaluateCells(root, cells, count, meanStd, device, batchSize, seed, makePredict,
+                  reloadModel, resetPerCell):
+    """{cell -> result} for one method, each result carrying its displacement.
+
+    `makePredict(model)` returns the predict callable and `reloadModel()` returns
+    the frozen model again. With resetPerCell every cell starts from that frozen
+    model (episodic); without it one model walks the whole list and each cell is
+    read on the parameters the cells before it left behind (chained). The online
+    stream is the one setting defined by not resetting, and it does not come
+    through here.
+    """
+    table = {}
+    model = None
+    predict = None
+    for index, cell in enumerate(cells):
+        if resetPerCell or index == 0:
+            model = reloadModel()
+            predict = makePredict(model)
+        before = snapshot(model)
+        result = evaluateCell(root, cell, count, meanStd, device, batchSize, seed, predict)
+        result["displacementNorm"] = displacement(before, model)
+        table[cell] = result
+    return table
 
 
 def runStream(batches, predict, corruptionNames):

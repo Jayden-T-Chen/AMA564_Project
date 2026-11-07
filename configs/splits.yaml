@@ -1,13 +1,7 @@
-corruptions:
-  # Official CIFAR-10-C set (15 types). The archive also ships 4 extra types
-  # (speckle_noise, gaussian_blur, spatter, saturate) from the C+P extension;
-  # they are out of scope here, see data/DATA.md.
-  noise: [gaussian_noise, shot_noise, impulse_noise]
-  blur: [defocus_blur, glass_blur, motion_blur, zoom_blur]
-  weather: [snow, frost, fog, brightness]
-  digital: [contrast, elastic_transform, pixelate, jpeg_compression]
-severities: [1, 2, 3, 4, 5]
-imagesPerSeverityBlock: 10000
+# Which cells tune and which are evaluated. The benchmark's own layout -- the four
+# corruption families, the five severities and the 10,000 images per severity block --
+# is a fact about the archive and is recorded in data/DATA.md, so only the three cell
+# sets below live here, and every key in them is read by a run.
 
 # Tuning cells. Never evaluated. Labels are used only to pick these cells.
 validation:

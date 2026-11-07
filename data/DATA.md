@@ -19,6 +19,12 @@ Archive layout, verified by reading the arrays:
 
 - 19 corruption arrays, each `(50000, 32, 32, 3)` uint8 = five severity blocks of
   **10,000 images**, severity 1 first. Total for the official 15 types: 750,000 images.
+- The official 15 come in four families: **noise** (gaussian, shot, impulse), **blur**
+  (defocus, glass, motion, zoom), **weather** (snow, frost, fog, brightness) and
+  **digital** (contrast, elastic transform, pixelate, jpeg compression). Five of them are
+  the tuning set — gaussian_noise, frost, motion_blur, contrast, jpeg_compression — and the
+  other ten are only evaluated, which is the seen/unseen split `configs/splits.yaml` builds
+  the 65 test cells from.
 - `labels.npy` is `(50000,)` uint8: the 10,000 CIFAR-10 test labels tiled five times,
   so a row index addresses images and labels with the same slice.
 - Severity order confirmed from the data: `brightness` block means rise

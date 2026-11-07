@@ -13,12 +13,6 @@ def loadConfig(name):
         return yaml.safe_load(handle)
 
 
-def getPath(config, dottedPath):
-    """Read a two-level key: "entropyGate.keepFraction" -> config[...][...]."""
-    section, key = dottedPath.split(".")
-    return config[section][key]
-
-
 def setPath(config, dottedPath, value):
     """Write a two-level key in place and return the config."""
     section, key = dottedPath.split(".")

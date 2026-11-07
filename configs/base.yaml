@@ -8,7 +8,8 @@ paths:
   resultsDir: results
 
 source:
-  model: resnet18
+  # ResNet-18 itself is models/resNet18.buildResNet18; everything below is what the
+  # frozen checkpoint was trained with.
   epochs: 100
   batchSize: 128
   lr: 0.1                # SGD + cosine schedule, standard CIFAR recipe
@@ -23,11 +24,22 @@ source:
 
 adaptation:
   bnMode: train          # BN normalises with the current batch statistics
+  # Static cells only. true reloads the frozen checkpoint before every cell, the
+  # episodic protocol CIFAR-10-C is normally read under, so a cell's accuracy
+  # depends on nothing but that cell. false chains the cells: one model walks the
+  # whole list and every cell is read on the parameters the cells before it left
+  # behind, which makes the reading depend on the cell's position in the list.
+  # The online stream never resets; that is the setting, not this switch.
+  resetPerCell: true
   lr: 0.001              # shared by TENT and gated-TENT
-  tunedLr: 0.016         # TENT's own step size, selected on the validation cells:
-                         # results/probe.csv and results/stepControl.csv cover
-                         # 0.0005-0.032, seven trials against the six the gate
-                         # tuning used, so the baseline is not under-tuned
+  tunedLr: 0.064         # TENT's own step size, selected on the validation cells.
+                         # The `ladder` block of configs/gate.yaml carries the
+                         # whole sweep this was read off: nine step sizes from
+                         # 0.0005 to 0.128 at batch 64, three seeds each, so the
+                         # baseline is tuned on at least as many trials as the
+                         # gate is. Accuracy rises monotonically to 0.064 and
+                         # drops at 0.128, which brackets the peak rather than
+                         # leaving it at the edge of the swept range.
   stepsPerBatch: 1
   gradientProbeBatches: 10   # batches per cell sampled by run/runGradientScale.py
   batchSize: 64

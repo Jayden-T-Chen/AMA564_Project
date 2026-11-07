@@ -1,6 +1,6 @@
 """Figures for the report, drawn from the CSVs under results/.
 
-Run:  .venv/bin/python -m run.makeFigures
+Invoked as `run.runAll figures`, which the default `run.runAll` also does.
 
 Every figure reads the rows the report quotes, so a number in the text and the point in
 the picture come from the same CSV. A figure whose input has not been run yet is skipped
@@ -31,7 +31,10 @@ def resultPath(name):
 def readRows(name):
     """The rows of results/<name>, or None when that run has not happened yet."""
     path = resultPath(name)
-    return list(csv.DictReader(open(path))) if path.exists() else None
+    if not path.exists():
+        return None
+    with open(path, newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
 
 
 def writeFigure(figure, name, note=""):
@@ -60,76 +63,151 @@ def cellAccuracy(rows):
             for name, table in cells.items()}
 
 
-def tentCurveAt(ladder, path):
-    """TENT's own accuracy at the same displacement, read off its learning-rate ladder.
+def tentCurveAt(ladder, distance):
+    """TENT's own accuracy at the same displacement, read off its ladder.
 
-    ladder is (path, accuracy) pairs measured at one batch size. Linear in log path, which
-    is the scale the ladder is spaced on. Returns None outside the ladder's range, where
-    reading it off would be an extrapolation.
+    ladder is (displacement, accuracy) pairs measured at one batch size. Linear in log
+    displacement, which is the scale the ladder is spaced on. Returns None outside the
+    ladder's range, where reading it off would be an extrapolation.
     """
-    byPath = defaultdict(list)
+    byDistance = defaultdict(list)
     for x, y in ladder:
-        byPath[x].append(y)
-    points = sorted((x, sum(y) / len(y)) for x, y in byPath.items())
-    if len(points) < 2 or not points[0][0] <= path <= points[-1][0]:
+        byDistance[x].append(y)
+    points = sorted((x, sum(y) / len(y)) for x, y in byDistance.items())
+    if len(points) < 2 or not points[0][0] <= distance <= points[-1][0]:
         return None
     for (left, leftAccuracy), (right, rightAccuracy) in zip(points, points[1:]):
-        if left <= path <= right:
-            share = (math.log(path) - math.log(left)) / (math.log(right) - math.log(left))
+        if left <= distance <= right:
+            share = (math.log(distance) - math.log(left)) / (math.log(right) - math.log(left))
             return leftAccuracy + share * (rightAccuracy - leftAccuracy)
     return None
 
 
-def stepSizeFigure():
-    """Accuracy against the distance the parameters travel over one cell.
+def mean(values):
+    return sum(values) / len(values)
 
-    The ladders this repo ran live on different axes: TENT's learning rate, the
-    consistency term's lambda, and the batch size. cellPathLength = lr * ||grad L|| *
-    batches per cell is the one axis all three share, so if every point falls on one
-    curve, the gain the ablation attributed to the consistency term is movement rather
-    than a different mechanism.
+
+def std(values):
+    """Population standard deviation, the same convention evaluation/metrics.meanStd uses."""
+    if len(values) < 2:
+        return 0.0
+    centre = mean(values)
+    return math.sqrt(sum((value - centre) ** 2 for value in values) / len(values))
+
+
+def ladderBySeed(rows):
+    """{seed -> {variant -> {"accuracy", "displacement", "batch"}}}, over that seed's cells."""
+    gathered = defaultdict(lambda: defaultdict(lambda: {"accuracy": [], "displacement": [],
+                                                         "batch": None}))
+    for row in rows:
+        entry = gathered[row["seed"]][row["variant"]]
+        entry["accuracy"].append(100 * float(row["accuracy"]))
+        entry["displacement"].append(float(row["displacementNorm"]))
+        entry["batch"] = row["batch"]
+    return {seed: {name: {"accuracy": mean(values["accuracy"]),
+                          "displacement": mean(values["displacement"]),
+                          "batch": values["batch"],
+                          "size": len(values["accuracy"])}
+                   for name, values in variants.items()}
+            for seed, variants in gathered.items()}
+
+
+def pooledBySeed(bySeed):
+    """One entry per variant, averaging the seeds that produced it, for the plot."""
+    gathered = defaultdict(lambda: {"accuracy": [], "displacement": [], "batch": None})
+    for variants in bySeed.values():
+        for name, entry in variants.items():
+            gathered[name]["accuracy"].append(entry["accuracy"])
+            gathered[name]["displacement"].append(entry["displacement"])
+            gathered[name]["batch"] = entry["batch"]
+    return {name: {"accuracy": mean(values["accuracy"]),
+                   "displacement": mean(values["displacement"]),
+                   "batch": values["batch"]}
+            for name, values in gathered.items()}
+
+
+def matchedGaps(bySeed):
+    """{variant -> [gap per seed]} against TENT's own curve at the same displacement.
+
+    Each seed is scored on the ladder that seed measured, so the spread across seeds
+    is the spread of the comparison itself rather than of either curve. A variant
+    whose displacement falls outside its seed's ladder contributes no gap there, which
+    is why a row can carry fewer seeds than the block ran.
+    """
+    gaps = defaultdict(list)
+    # Sorted seed order, so the position a gap holds in its list names the seed it came from.
+    for _seed, variants in sorted(bySeed.items()):
+        ladder = defaultdict(list)
+        for name, entry in variants.items():
+            if name.startswith("tent") and entry["displacement"] > 0.0:
+                ladder[entry["batch"]].append((entry["displacement"], entry["accuracy"]))
+        for name, entry in variants.items():
+            if name.startswith("tent") or entry["displacement"] <= 0.0:
+                continue
+            reference = tentCurveAt(ladder[entry["batch"]], entry["displacement"])
+            if reference is not None:
+                gaps[name].append(entry["accuracy"] - reference)
+    return gaps
+
+
+def stepSizeFigure():
+    """Accuracy against the distance the parameters actually travel over one cell.
+
+    The axis is the `displacementNorm` column every accuracy run records for itself,
+    ||theta_after - theta_before|| over the 9,600 BN affine parameters, measured on the
+    run rather than estimated from a gradient norm at the source point. The three ladders
+    -- TENT's step size, the consistency term's lambda, and the batch size -- all move
+    that distance, so if the points fall on one curve per batch size, the gain the
+    ablation attributed to the consistency term is movement rather than a mechanism.
 
     Alongside the figure, each consistency point is scored against TENT's curve at the
     same displacement and the same batch size, which turns that question into a number.
-
-    A missing gradientScale-<block>.csv only costs that block's points, because the
-    accuracy runs and the gradient probe are separate commands.
+    The ladder block runs that comparison at three seeds, so each gap is printed with its
+    seed-to-seed spread: a mean gap the spread covers is not a detected effect.
     """
+    rows = readRows("ladder.csv")
+    if not rows:
+        print("skipped stepSize: results/ladder.csv not written yet")
+        return
+    bySeed = ladderBySeed(rows)
+    summary = pooledBySeed(bySeed)
     series = {"tent": [], "consistency": []}
-    ladder = defaultdict(list)
-    seen = set()
-    for block in ("stepControl", "smallBatch", "batch16Tuning", "probe"):
-        scales = readRows(f"gradientScale-{block}.csv")
-        accuracies = readRows(f"{block}.csv")
-        if not scales or not accuracies:
+    for name, entry in summary.items():
+        # A zero displacement has no place on a log axis and no reading on the ladder.
+        if entry["displacement"] <= 0.0:
             continue
-        byVariant = cellAccuracy(accuracies)
-        for row in scales:
-            path = float(row["cellPathLength"])
-            family = "tent" if row["variant"].startswith("tent") else "consistency"
-            point = (path, 100 * byVariant[row["variant"]], row["variant"], row["batchSize"],
-                     float(row["lambdaWeight"]))
-            # The blocks overlap: smallBatch re-ran the batch-64 lambda 4 configuration that
-            # stepControl already measured, and got the same accuracy. Keep one copy.
-            if (family, point[3], point[4], path) not in seen:
-                seen.add((family, point[3], point[4], path))
-                series[family].append(point)
-                if family == "tent":
-                    ladder[point[3]].append((path, point[1]))
+        series["tent" if name.startswith("tent") else "consistency"].append(
+            (entry["displacement"], entry["accuracy"], name, entry["batch"]))
     if len(series["tent"]) < 2 or len(series["consistency"]) < 2:
-        print("skipped stepSize: need gradientScale-<block>.csv next to <block>.csv for both ladders")
+        print("skipped stepSize: results/ladder.csv holds fewer than two points per family")
         return
 
-    # The matched comparison: TENT's accuracy at the same batch size and the same total
-    # displacement. A positive gap means the consistency term beat plain movement.
-    print("  lambda  batch  path/cell  ours   TENT at the same displacement   gap (pp)")
-    for path, accuracy, _, size, weight in sorted(series["consistency"]):
-        reference = tentCurveAt(ladder[size], path)
-        score = f"{reference:7.2f}  {accuracy - reference:+6.2f}" if reference else "   --       --"
-        print(f"    {weight:>4}  {size:>5}  {path:9.3f}  {accuracy:6.2f}  {score}")
+    distances = {name: entry["displacement"] for name, entry in summary.items()}
+    accuracies = {name: entry["accuracy"] for name, entry in summary.items()}
+    sizes = {name: entry["batch"] for name, entry in summary.items()}
+    gaps = matchedGaps(bySeed)
+    print("\n== matched displacement, read off the displacementNorm column of ladder.csv ==")
+    print(f"  {'variant':26s}{'batch':>7s}{'distance/cell':>15s}{'acc':>8s}"
+          f"{'gap vs TENT (pp)':>19s}{'spread':>9s}{'seeds':>7s}")
+    for name in sorted(gaps, key=lambda name: (sizes[name], distances[name])):
+        values = gaps[name]
+        print(f"  {name:26s}{sizes[name]:>7s}{distances[name]:15.3f}{accuracies[name]:8.2f}"
+              f"{mean(values):+14.2f}{std(values):9.2f}{len(values):>7d}")
+    readable = {name: values for name, values in gaps.items() if sizes[name] == "64"}
+    flat = [value for values in readable.values() for value in values]
+    if flat:
+        print(f"  batch 64, all {len(flat)} readings: "
+              f"{mean(flat):+.2f} ± {std(flat):.2f} pp, "
+              f"positive in {sum(1 for value in flat if value > 0)} of {len(flat)}")
+        # One mean per seed. Within a seed every variant shares the batch order and the
+        # augmentation draws, so these three numbers are the paired reading.
+        print("  batch 64, mean gap by seed: " + "   ".join(
+            f"seed {seed} {mean([values[index] for values in readable.values()
+                                 if len(values) > index]):+.2f} pp"
+            for index, seed in enumerate(sorted(bySeed))))
 
     figure, axis = plt.subplots(figsize=(6.8, 4.6))
-    markers = {"64": "o", "32": "s", "16": "^", "256": "P"}
+    markers = {"64": "o", "32": "s", "16": "^"}
     for family, colour, label in (("tent", "tab:blue", "TENT"),
                                   ("consistency", "tab:red", "TENT + consistency term")):
         bySize = defaultdict(list)
@@ -139,19 +217,20 @@ def stepSizeFigure():
             points = sorted(points)
             # Only the batch-64 ladders are joined: those two sweeps are the matched control.
             axis.plot([point[0] for point in points], [point[1] for point in points], color=colour,
-                      marker=markers[size], linestyle="-" if size == "64" else "None",
+                      marker=markers.get(size, "o"), linestyle="-" if size == "64" else "None",
                       linewidth=1.0, label=f"{label}, batch {size}")
-            for path, accuracy, name, _, _ in points:
-                axis.annotate(name.replace("_", " "), (path, accuracy), fontsize=6, color=colour,
+            for distance, accuracy, name, _ in points:
+                axis.annotate(name, (distance, accuracy), fontsize=6, color=colour,
                               textcoords="offset points", xytext=(4, 4))
     axis.set_xscale("log")
-    axis.set_xlabel("parameter distance travelled per cell, lr * |grad L| * batches")
+    axis.set_xlabel("||theta_after - theta_before|| per cell, measured on the run")
     axis.set_ylabel("mean accuracy over the validation cells (%)")
-    axis.set_title("Both ladders on one axis: does the consistency term move along TENT's curve?")
+    axis.set_title("Both ladders on the measured displacement axis, one curve per batch size")
     axis.grid(alpha=0.3)
     axis.legend(fontsize=7)
     writeFigure(figure, "stepSize",
-                f"{len(series['tent'])} TENT and {len(series['consistency'])} consistency points")
+                f"{len(series['tent'])} TENT and {len(series['consistency'])} consistency points, "
+                f"{len(bySeed)} seed{'s' if len(bySeed) > 1 else ''}")
 
 
 def ablationFigure():
@@ -259,11 +338,7 @@ def batchSweepFigure():
     writeFigure(figure, "batchSweep", coverage(rows))
 
 
-def main():
+def main(args=()):
     for figureBuilder in (stepSizeFigure, ablationFigure, severityFigure,
                           corruptionFigure, batchSweepFigure):
         figureBuilder()
-
-
-if __name__ == "__main__":
-    main()

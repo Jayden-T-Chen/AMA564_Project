@@ -4,8 +4,8 @@ The normalisation statistics are fit here on the training split only and stored
 inside the checkpoint, so downstream runs cannot drift from what the backbone
 was actually trained with.
 
-Run:  .venv/bin/python -m run.trainSource            # full 100 epochs
-      .venv/bin/python -m run.trainSource --epochs 2 # smoke test
+Invoked as `run.runAll train` for the full 100 epochs, or `run.runAll train --epochs 2`
+as a smoke test.
 """
 
 import argparse
@@ -59,8 +59,11 @@ def accuracy(model, loader, device):
     return correct / len(loader.dataset)
 
 
-def main(epochs):
+def main(args=()):
     base = loadConfig("base")
+    parser = argparse.ArgumentParser(prog="run.runAll train")
+    parser.add_argument("--epochs", type=int, default=base["source"]["epochs"])
+    epochs = parser.parse_args(list(args)).epochs
     source = base["source"]
     device = resolveDevice(base["deviceOrder"])
     setSeed(base["seed"])
@@ -115,9 +118,3 @@ def main(epochs):
         json.dump({"checkpoint": str(checkpointPath), "device": str(device),
                    "fittedNormalisation": stats, "curve": curve}, handle, indent=2)
     print(f"saved {checkpointPath} and results/sourceTrain.json")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=loadConfig("base")["source"]["epochs"])
-    main(parser.parse_args().epochs)

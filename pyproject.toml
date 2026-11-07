@@ -13,7 +13,6 @@ dependencies = [
     "numpy",
     "pyyaml",
     "matplotlib",
-    "tqdm",
     # macOS framework Python ships without a usable trust store, so the
     # torchvision CIFAR-10 download fails on SSL verification without this.
     "certifi",

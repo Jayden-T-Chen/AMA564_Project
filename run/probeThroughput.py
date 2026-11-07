@@ -1,8 +1,10 @@
-"""Measure what this machine can do before committing to an experiment grid.
+"""Measure the three step types an experiment is made of on the device at hand.
 
-Run:  .venv/bin/python -m run.probeThroughput
-Weights are random here; throughput does not depend on trained values.
+Invoked as `run.runAll throughput`. Weights are random here; throughput does not depend
+on trained values.
 """
+
+import math
 
 import torch
 
@@ -16,7 +18,14 @@ from models.resNet18 import buildResNet18, keepBnAffineOnly
 from run.runUtils import batchOrder, resolveDevice, setSeed
 
 
-def main():
+def peakText(measurement):
+    """The memory column, `n/a` where the platform exposes no reading."""
+    peak = measurement["peakAllocatedMb"]
+    field = "n/a" if math.isnan(peak) else f"{peak:.1f}"
+    return f"peak {field:>7} MB"
+
+
+def main(args=()):
     base = loadConfig("base")
     device = resolveDevice(base["deviceOrder"])
     setSeed(base["seed"])
@@ -46,17 +55,13 @@ def main():
 
     print(f"device={device} batchSize={batchSize} updatedParams={trainableCount}")
     print(f"forward only : {forwardOnly['imagesPerSecond']:7.1f} img/s  "
-          f"{forwardOnly['latencyMsPerBatch']:6.2f} ms/batch  peak {forwardOnly['peakAllocatedMb']:7.1f} MB")
+          f"{forwardOnly['latencyMsPerBatch']:6.2f} ms/batch  {peakText(forwardOnly)}")
     print(f"TENT step    : {tent['imagesPerSecond']:7.1f} img/s  "
-          f"{tent['latencyMsPerBatch']:6.2f} ms/batch  peak {tent['peakAllocatedMb']:7.1f} MB")
+          f"{tent['latencyMsPerBatch']:6.2f} ms/batch  {peakText(tent)}")
     print(f"consistency  : {gated['imagesPerSecond']:7.1f} img/s  "
-          f"{gated['latencyMsPerBatch']:6.2f} ms/batch  peak {gated['peakAllocatedMb']:7.1f} MB")
+          f"{gated['latencyMsPerBatch']:6.2f} ms/batch  {peakText(gated)}")
     for name, count in (("65 test cells", 650000), ("severity-5 grid", 150000), ("online stream", 25000)):
         print(f"  {name:16s} = {count:7d} images -> "
               f"forward-only {count / forwardOnly['imagesPerSecond'] / 60:5.1f} min, "
               f"TENT {count / tent['imagesPerSecond'] / 60:5.1f} min, "
               f"consistency {count / gated['imagesPerSecond'] / 60:5.1f} min")
-
-
-if __name__ == "__main__":
-    main()
